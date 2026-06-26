@@ -3,7 +3,7 @@ import { propertyRepository } from '@/lib/repository';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const record = propertyRepository.saveProperty({
+  const record = await propertyRepository.saveProperty({
     userType: 'owner',
     intent: body.intent,
     address: body.address,

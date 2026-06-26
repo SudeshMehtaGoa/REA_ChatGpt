@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Property {
+  id               String   @id @default(uuid())
+  userType         String   @default("owner")
+  intent           String
+  address          String
+  lat              Float
+  lng              Float
+  priceExpectation Float
+  buildYear        Int
+  sizeSqm          Float
+  rooms            Int
+  baths            Int
+  parking          Int
+  createdAt        DateTime @default(now())
+}
+
+model Preference {
+  id             String   @id @default(uuid())
+  userType       String   @default("customer")
+  intent         String
+  targetLocation String
+  lat            Float
+  lng            Float
+  maxBudget      Float
+  minSizeSqm     Float
+  minRooms       Int
+  searchRadiusKm Int
+  createdAt      DateTime @default(now())
+}

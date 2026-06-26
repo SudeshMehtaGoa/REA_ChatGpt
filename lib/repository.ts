@@ -1,76 +1,120 @@
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
-
-const DATA_FILE = path.join(process.cwd(), 'data.json');
+import { prisma } from './prisma';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 export interface Property {
   id: string;
-  userType: 'owner';
-  intent: 'sell' | 'rent';
+  userType: string;
+  intent: string;
   address: string;
   coordinates: { lat: number; lng: number };
-  /** Asking price (sell) or monthly rent (rent) in the currency the owner specified */
   priceExpectation: number;
-  buildYear: number;         // e.g. 2018
-  sizeSqm: number;           // always stored as square metres
-  rooms: number;             // integer
-  baths: number;             // integer
-  parking: number;           // integer
+  buildYear: number;
+  sizeSqm: number;
+  rooms: number;
+  baths: number;
+  parking: number;
   createdAt: string;
 }
 
 export interface Preference {
   id: string;
-  userType: 'customer';
-  intent: 'buy' | 'rent';
+  userType: string;
+  intent: string;
   targetLocation: string;
   coordinates: { lat: number; lng: number };
-  maxBudget: number;         // max price (buy) or max monthly rent (rent)
-  minSizeSqm: number;        // minimum size in square metres
-  minRooms: number;          // integer
-  searchRadiusKm: number;    // 1 | 2 | 5
+  maxBudget: number;
+  minSizeSqm: number;
+  minRooms: number;
+  searchRadiusKm: number;
   createdAt: string;
 }
 
-interface DataStore {
-  properties: Property[];
-  preferences: Preference[];
+function toProperty(row: {
+  id: string; userType: string; intent: string; address: string;
+  lat: number; lng: number; priceExpectation: number; buildYear: number;
+  sizeSqm: number; rooms: number; baths: number; parking: number; createdAt: Date;
+}): Property {
+  return {
+    id: row.id,
+    userType: row.userType,
+    intent: row.intent,
+    address: row.address,
+    coordinates: { lat: row.lat, lng: row.lng },
+    priceExpectation: row.priceExpectation,
+    buildYear: row.buildYear,
+    sizeSqm: row.sizeSqm,
+    rooms: row.rooms,
+    baths: row.baths,
+    parking: row.parking,
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
-function readData(): DataStore {
-  const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function writeData(data: DataStore): void {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+function toPreference(row: {
+  id: string; userType: string; intent: string; targetLocation: string;
+  lat: number; lng: number; maxBudget: number; minSizeSqm: number;
+  minRooms: number; searchRadiusKm: number; createdAt: Date;
+}): Preference {
+  return {
+    id: row.id,
+    userType: row.userType,
+    intent: row.intent,
+    targetLocation: row.targetLocation,
+    coordinates: { lat: row.lat, lng: row.lng },
+    maxBudget: row.maxBudget,
+    minSizeSqm: row.minSizeSqm,
+    minRooms: row.minRooms,
+    searchRadiusKm: row.searchRadiusKm,
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 export const propertyRepository = {
-  saveProperty(payload: Omit<Property, 'id' | 'createdAt'>): Property {
-    const data = readData();
-    const record: Property = { id: uuidv4(), createdAt: new Date().toISOString(), ...payload };
-    data.properties.push(record);
-    writeData(data);
-    return record;
+  async saveProperty(p: Omit<Property, 'id' | 'createdAt'>): Promise<Property> {
+    const row = await prisma.property.create({
+      data: {
+        userType: p.userType,
+        intent: p.intent,
+        address: p.address,
+        lat: p.coordinates.lat,
+        lng: p.coordinates.lng,
+        priceExpectation: p.priceExpectation,
+        buildYear: p.buildYear,
+        sizeSqm: p.sizeSqm,
+        rooms: p.rooms,
+        baths: p.baths,
+        parking: p.parking,
+      },
+    });
+    return toProperty(row);
   },
 
-  findAll(): Property[] {
-    return readData().properties;
+  async findAll(): Promise<Property[]> {
+    const rows = await prisma.property.findMany({ orderBy: { createdAt: 'desc' } });
+    return rows.map(toProperty);
   },
 
-  findByIntent(intent: 'sell' | 'rent'): Property[] {
-    return readData().properties.filter((p) => p.intent === intent);
+  async findByIntent(intent: string): Promise<Property[]> {
+    const rows = await prisma.property.findMany({ where: { intent }, orderBy: { createdAt: 'desc' } });
+    return rows.map(toProperty);
   },
 };
 
 export const preferenceRepository = {
-  savePreference(payload: Omit<Preference, 'id' | 'createdAt'>): Preference {
-    const data = readData();
-    const record: Preference = { id: uuidv4(), createdAt: new Date().toISOString(), ...payload };
-    data.preferences.push(record);
-    writeData(data);
-    return record;
+  async savePreference(p: Omit<Preference, 'id' | 'createdAt'>): Promise<Preference> {
+    const row = await prisma.preference.create({
+      data: {
+        userType: p.userType,
+        intent: p.intent,
+        targetLocation: p.targetLocation,
+        lat: p.coordinates.lat,
+        lng: p.coordinates.lng,
+        maxBudget: p.maxBudget,
+        minSizeSqm: p.minSizeSqm,
+        minRooms: p.minRooms,
+        searchRadiusKm: p.searchRadiusKm,
+      },
+    });
+    return toPreference(row);
   },
 };

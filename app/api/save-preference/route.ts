@@ -5,7 +5,7 @@ import { getHaversineDistance } from '@/lib/haversine';
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const record = preferenceRepository.savePreference({
+  const record = await preferenceRepository.savePreference({
     userType: 'customer',
     intent: body.intent,
     targetLocation: body.targetLocation,
@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
     searchRadiusKm: Number(body.searchRadiusKm),
   });
 
-  // intent mapping: customer "buy" matches owner "sell", "rent" matches "rent"
+  // "buy" matches "sell" listings, "rent" matches "rent" listings
   const ownerIntent = body.intent === 'buy' ? 'sell' : 'rent';
-  const listings = propertyRepository.findByIntent(ownerIntent);
+  const listings = await propertyRepository.findByIntent(ownerIntent);
 
   const matches = listings.filter((p) => {
     const dist = getHaversineDistance(
